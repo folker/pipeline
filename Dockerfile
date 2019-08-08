@@ -9,8 +9,7 @@ RUN apt-get update && apt-get install -y \
 	cd-hit		\
 	cmake       \
 	dh-autoreconf \
-	emacs \
-	git 		\
+	git \
   libtbb-dev \
 	libcwd-guard-perl \
 	libberkeleydb-perl \
@@ -38,6 +37,7 @@ RUN apt-get update && apt-get install -y \
 	liblog-log4perl-perl \
 	make 		\
 	nodejs \
+	pkg-config \
 	python-biopython \
 	python-dev \
 	python-leveldb \
@@ -46,22 +46,20 @@ RUN apt-get update && apt-get install -y \
 	python-pika \
   python-pip \
 	python-scipy \
-	python-sphinx \
 	unzip \
 	wget \
-  vim \
+	yaggo \
 	curl \
 	&& apt-get clean
 
 ### alphabetically sorted builds from source
 
+ADD build_bin/git_rb.sh /build_bin/git_rb.sh
+
 ### install latest bowtie2 release
 RUN cd /root \
-		&& 	curl -s https://api.github.com/repos/BenLangmead/bowtie2/releases/latest  \
-		| grep tarball_url | cut -f4 -d\" | wget -O download.tar.gz -qi - \
-		&& tar xzfp download.tar.gz \
-    && rm -f download.tar.gz \
-    && cd * \
+		&& bash -c '/build_bin/git_rb.sh BenLangmead bowtie2' \
+		&& cd * \
     && make \
     && install bowtie2* /usr/local/bin/ \
     && cd /root \
@@ -77,30 +75,25 @@ RUN cd /root \
 
 ### install latest DIAMOND release
 RUN cd /root \
-	&& 	curl -s https://api.github.com/repos/bbuchfink/diamond/releases/latest  \
-	| grep tarball_url | cut -f4 -d\" | wget -O download.tar.gz -qi - \
-	&& tar xzfp download.tar.gz \
-	&& rm -f download.tar.gz \
-  && cd * \
+	&& bash -c '/build_bin/git_rb.sh bbuchfink diamond' \
+	&& cd * \
 	&& sh ./build_simple.sh \
 	&& install -s -m555 diamond /usr/local/bin \
 	&& cd /root \
-	&& rm -rf
+	&& rm -rf *diamond*
 
 ### install latest ea-utils release
 RUN cd /root \
-	&& curl -s https://api.github.com/repos/ExpressionAnalysis/ea-utils/releases/latest  \
-	| grep tarball_url | cut -f4 -d\" | wget -O download.tar.gz -qi - \
-	&& tar xzfp download.tar.gz \
-	&& rm -f download.tar.gz \
-  && cd * \
+	&& bash -c '/build_bin/git_rb.sh ExpressionAnalysis ea-utils' \
+  && cd *ea-utils*/clipper \
 	&& make fastq-multx \
 	&& make fastq-join \
 	&& make fastq-mcf \
 	&& install -m755 -s fastq-multx /usr/local/bin \
 	&& install -m755 -s fastq-join /usr/local/bin \
 	&& install -m755 -s fastq-mcf /usr/local/bin \
-	&& cd /root ; rm -rf ea-utils
+	&& cd /root \
+	&& rm -rf *ea-utils*
 
 ### install FragGeneScan from our patched source in github
 RUN cd /root \
@@ -114,46 +107,44 @@ RUN cd /root \
 	&& install -s -m555 FragGeneScan /usr/local/bin/. \
 	&& install -m555 -t /usr/local/bin/. bin/*.pl \
 	&& make clean \
-	&& cd /root ; rm -rf FragGeneScan
+	&& cd /root \
+	&& rm -rf FragGeneScan
 
 
 ### install jellyfish 2.2.6 from source (2.2.8 from repo is broken)
 RUN cd /root \
-    && wget -O jellyfish.tar.gz https://github.com/gmarcais/Jellyfish/releases/download/v2.2.6/jellyfish-2.2.6.tar.gz \
-    && tar xfvz jellyfish.tar.gz \
-    && rm -f jellyfish.tar.gz \
-    && cd jelly*  \
-    && ./configure \
+    && bash -c '/build_bin/git_rb.sh gmarcais Jellyfish' \
+    && cd *  \
+		&& autoreconf -i \
+    && ./configure --prefix=/usr/local \
     && make install \
     && cd /root \
-    #&& rm -rf jelly*
+    && rm -rf *elly*
 
 ### install latest prodigal release
 RUN cd /root \
-		&& curl -s https://api.github.com/repos/hyattpd/Prodigal/releases/latest  \
-		| grep tarball_url | cut -f4 -d\" | wget -O download.tar.gz -qi - \
-		&& tar xzfp download.tar.gz \
-		&& rm -f download.tar.gz \
-		&& cd * \
+		&& bash -c '/build_bin/git_rb.sh hyattpd Prodigal'  \
+		&& cd *Prodigal* \
     && make \
     && make install \
     && strip /usr/local/bin/prodigal \
     && make clean \
-    && cd /root ; rm -rf Prodigal*
+    && cd /root  \
+		&& rm -rf *Prodigal*
 
-### install latest sortmerna 2.1b release
-RUN cd /root \
-	&& curl -s https://api.github.com/repos/biocore/sortmerna/releases/latest  \
-	| grep tarball_url | cut -f4 -d\" | wget -O download.tar.gz -qi - \
-	&& tar xzfp download.tar.gz \
-	&& rm -f download.tar.gz \
-	&& cd * \
+	### install sortmerna 2.1b
+	RUN cd /root \
+	&& wget https://github.com/biocore/sortmerna/archive/2.1b.tar.gz \
+	&& tar xvf 2*.tar.gz \
+	&& cd sortmerna-2* \
 	&& sed -i 's/^\#define READLEN [0-9]*/#define READLEN 500000/' include/common.hpp \
 	&& ./configure \
-  && make install \
+	&& make install \
   && make clean \
-  && strip /usr/local/bin/sortmerna* \
-  && cd /root ; rm -rf sortmerna-2*
+  && cd /root \
+	&& rm -rf sortmerna-2* 2*.tar.gz
+
+
 
 ### install skewer
 RUN cd /root \
@@ -162,14 +153,12 @@ RUN cd /root \
     && make \
     && make install \
     && make clean \
-    && cd /root ; rm -rf skewer
+    && cd /root \
+		&& rm -rf skewer
 
 ### install latest vsearch release
 RUN cd /root \
-		&& curl -s https://api.github.com/repos/torognes/vsearch/releases/latest  \
-		| grep tarball_url | cut -f4 -d\" | wget -O download.tar.gz -qi - \
-		&& tar xzfp download.tar.gz \
-		&& rm -f download.tar.gz \
+		&& bash -c '/build_bin/git_rb.sh torognes vsearch'  \
 		&& cd * \
 		&& sh ./autogen.sh \
 		&& ./configure --prefix=/usr/local/ \
@@ -177,7 +166,8 @@ RUN cd /root \
 		&& make install \
 		&& make clean \
 		&& strip /usr/local/bin/vsearch* \
-		&& cd /root ; rm -rf vsearch-2*
+		&& cd /root \
+		&& rm -rf *vsearch*
 
 
 
