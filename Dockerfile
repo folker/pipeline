@@ -1,8 +1,17 @@
 # MG-RAST pipeline Dockerfile
 
-FROM ubuntu:18.10
-MAINTAINER The MG-RAST team (folker@mg-rast.org)
+FROM ubuntu:18.04
+MAINTAINER Folker for the MG-RAST team (folker@mg-rast.org)
 ARG DEBIAN_FRONTEND=noninteractive
+
+LABEL version="3"
+LABEL software="mg-rast"
+LABEL software.version="4.05"
+LABEL about.summary="the pipeline for the MG-RAST"
+LABEL about.home="https://www.mg-rast.org""
+LABEL about.documentation="https://help.mg-rast.org"
+LABEL about.tags="Metagenomics"
+LABEL about.summary="contains the current v4.05 MG-RAST pipeline"
 
 RUN apt-get update && apt-get install -y \
 	cdbfasta 	\
@@ -43,7 +52,7 @@ RUN apt-get update && apt-get install -y \
 	python-leveldb \
 	perl-modules \
   python-numpy \
-	python-pika \
+	python-pika-doc \
   python-pip \
 	python-scipy \
 	unzip \
